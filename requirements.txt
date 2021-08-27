@@ -1,0 +1,9 @@
+cdp-backend[all]~=3.0.0.dev8
+ipython
+jupyterlab
+numpy
+pandas
+matplotlib
+sentence-transformers
+altair
+seaborn
