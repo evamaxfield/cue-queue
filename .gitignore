@@ -121,6 +121,7 @@ annotated/
 plots/
 summaries/
 unannotated/
+cue-phrases-tfidf.csv
 
 # Common credentials directories
 .keys/
