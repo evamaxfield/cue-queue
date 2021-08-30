@@ -90,93 +90,94 @@ def process_transcript(
 
 ###############################################################################
 
-# Read and process each transcript
-for transcript_path in tqdm(
-    list(ANNOTATED_DATASET.glob("*-transcript.json")), "Transcripts processed"
-):
-    try:
-        # Read transcript
-        with open(transcript_path, "r") as open_file:
-            transcript = Transcript.from_json(open_file.read())  # type: ignore
+if __name__ == "__main__":
+    # Read and process each transcript
+    for transcript_path in tqdm(
+        list(ANNOTATED_DATASET.glob("*-transcript.json")), "Transcripts processed"
+    ):
+        try:
+            # Read transcript
+            with open(transcript_path, "r") as open_file:
+                transcript = Transcript.from_json(open_file.read())  # type: ignore
 
-        # Get sections
-        sections = [
-            SectionAnnotation.from_dict(s)  # type: ignore
-            for s in transcript.annotations[
-                TranscriptAnnotations.sections.name  # type: ignore
+            # Get sections
+            sections = [
+                SectionAnnotation.from_dict(s)  # type: ignore
+                for s in transcript.annotations[
+                    TranscriptAnnotations.sections.name  # type: ignore
+                ]
             ]
-        ]
 
-        # Process
-        transcript_results = process_transcript(
-            section_details=[
-                SectionDetails(
-                    name=section.name,
-                    seed=get_full_section_description(section),
-                )
-                for section in sections
-            ],
-            transcript=transcript,
-        )
-
-        # Clear any existing plots
-        plt.close("all")
-        _ = plt.figure()
-
-        # Plot new
-        sns.relplot(
-            x="sentence_index",
-            y="distance",
-            hue="section_name",
-            kind="line",
-            data=transcript_results,
-        )
-
-        # Save
-        plt.savefig(
-            PLOTS / transcript_path.with_suffix(".png").name, bbox_inches="tight"
-        )
-
-        # Summarize
-        summarized_transcript_results_list: List[
-            Dict[str, Union[str, int, np.float32]]
-        ] = []
-        for section in sections:
-            section_min_distance_idx = transcript_results[
-                transcript_results.section_name == section.name
-            ].distance.idxmin()
-            section_min_distance_details = transcript_results.loc[
-                section_min_distance_idx
-            ]
-            summarized_transcript_results_list.append(
-                {
-                    "section_name": section.name,
-                    "true_section_start": section.start_sentence_index,
-                    "true_section_end": section.end_sentence_index,
-                    "predicted_section_min_distance_sentence_idx": (
-                        section_min_distance_details.sentence_index
-                    ),
-                    "predicted_section_min_distance_sentence_text": (
-                        transcript.sentences[
-                            section_min_distance_details.sentence_index
-                        ].text
-                    ),
-                    "predicted_section_min_distance": (
-                        section_min_distance_details.distance
-                    ),
-                }
+            # Process
+            transcript_results = process_transcript(
+                section_details=[
+                    SectionDetails(
+                        name=section.name,
+                        seed=get_full_section_description(section),
+                    )
+                    for section in sections
+                ],
+                transcript=transcript,
             )
 
-        # Save summary to CSV
-        summarized_transcript_results = pd.DataFrame(summarized_transcript_results_list)
-        summarized_transcript_results.to_csv(
-            SUMMARIES
-            / transcript_path.with_suffix(".csv").name.replace("transcript", "summary"),
-            index=False,
-        )
+            # Clear any existing plots
+            plt.close("all")
+            _ = plt.figure()
 
-    except (TypeError, KeyError) as e:
-        print(
-            f"Something wrong with transcript: {transcript_path}, skipping. "
-            f"Error: {e}"
-        )
+            # Plot new
+            sns.relplot(
+                x="sentence_index",
+                y="distance",
+                hue="section_name",
+                kind="line",
+                data=transcript_results,
+            )
+
+            # Save
+            plt.savefig(
+                PLOTS / transcript_path.with_suffix(".png").name, bbox_inches="tight"
+            )
+
+            # Summarize
+            summarized_transcript_results_list: List[
+                Dict[str, Union[str, int, np.float32]]
+            ] = []
+            for section in sections:
+                section_min_distance_idx = transcript_results[
+                    transcript_results.section_name == section.name
+                ].distance.idxmin()
+                section_min_distance_details = transcript_results.loc[
+                    section_min_distance_idx
+                ]
+                summarized_transcript_results_list.append(
+                    {
+                        "section_name": section.name,
+                        "true_section_start": section.start_sentence_index,
+                        "true_section_end": section.end_sentence_index,
+                        "predicted_section_min_distance_sentence_idx": (
+                            section_min_distance_details.sentence_index
+                        ),
+                        "predicted_section_min_distance_sentence_text": (
+                            transcript.sentences[
+                                section_min_distance_details.sentence_index
+                            ].text
+                        ),
+                        "predicted_section_min_distance": (
+                            section_min_distance_details.distance
+                        ),
+                    }
+                )
+
+            # Save summary to CSV
+            summarized_transcript_results = pd.DataFrame(summarized_transcript_results_list)
+            summarized_transcript_results.to_csv(
+                SUMMARIES
+                / transcript_path.with_suffix(".csv").name.replace("transcript", "summary"),
+                index=False,
+            )
+
+        except (TypeError, KeyError) as e:
+            print(
+                f"Something wrong with transcript: {transcript_path}, skipping. "
+                f"Error: {e}"
+            )
