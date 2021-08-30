@@ -169,10 +169,14 @@ if __name__ == "__main__":
                 )
 
             # Save summary to CSV
-            summarized_transcript_results = pd.DataFrame(summarized_transcript_results_list)
+            summarized_transcript_results = pd.DataFrame(
+                summarized_transcript_results_list
+            )
             summarized_transcript_results.to_csv(
                 SUMMARIES
-                / transcript_path.with_suffix(".csv").name.replace("transcript", "summary"),
+                / transcript_path.with_suffix(".csv").name.replace(
+                    "transcript", "summary"
+                ),
                 index=False,
             )
 
