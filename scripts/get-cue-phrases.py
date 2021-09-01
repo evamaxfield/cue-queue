@@ -8,12 +8,7 @@ from pathlib import Path
 from typing import List
 
 import pandas as pd
-from cdp_backend.pipeline.transcript_model import (
-    SectionAnnotation,
-    Sentence,
-    Transcript,
-    TranscriptAnnotations,
-)
+from cdp_backend.pipeline.transcript_model import Sentence, Transcript
 from nltk import ngrams
 from nltk.stem import SnowballStemmer
 from sentence_transformers import SentenceTransformer
@@ -76,17 +71,9 @@ def process_transcript(transcript_path: Path) -> pd.DataFrame:
     with open(transcript_path, "r") as open_file:
         transcript = Transcript.from_json(open_file.read())  # type: ignore
 
-    # Get sections
-    sections = [
-        SectionAnnotation.from_dict(s)  # type: ignore
-        for s in transcript.annotations[
-            TranscriptAnnotations.sections.name  # type: ignore
-        ]
-    ]
-
     # Get the stemmed term freqs for each section break sentence sequence
     all_stemmed_grams: List[str] = []
-    for section in sections:
+    for section in transcript.annotations.sections:
         # For each start get stemmed grams and add to list of all for this transcript
         sentences_wrapping_start_of_section = get_surrounding_sentences(
             transcript, section.start_sentence_index

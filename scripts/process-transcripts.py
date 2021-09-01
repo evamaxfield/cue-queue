@@ -8,11 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from cdp_backend.pipeline.transcript_model import (
-    SectionAnnotation,
-    Transcript,
-    TranscriptAnnotations,
-)
+from cdp_backend.pipeline.transcript_model import SectionAnnotation, Transcript
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
@@ -100,14 +96,6 @@ if __name__ == "__main__":
             with open(transcript_path, "r") as open_file:
                 transcript = Transcript.from_json(open_file.read())  # type: ignore
 
-            # Get sections
-            sections = [
-                SectionAnnotation.from_dict(s)  # type: ignore
-                for s in transcript.annotations[
-                    TranscriptAnnotations.sections.name  # type: ignore
-                ]
-            ]
-
             # Process
             transcript_results = process_transcript(
                 section_details=[
@@ -115,7 +103,7 @@ if __name__ == "__main__":
                         name=section.name,
                         seed=get_full_section_description(section),
                     )
-                    for section in sections
+                    for section in transcript.annotations.sections
                 ],
                 transcript=transcript,
             )
@@ -142,7 +130,7 @@ if __name__ == "__main__":
             summarized_transcript_results_list: List[
                 Dict[str, Union[str, int, np.float32]]
             ] = []
-            for section in sections:
+            for section in transcript.annotations.sections:
                 section_min_distance_idx = transcript_results[
                     transcript_results.section_name == section.name
                 ].distance.idxmin()
@@ -153,7 +141,7 @@ if __name__ == "__main__":
                     {
                         "section_name": section.name,
                         "true_section_start": section.start_sentence_index,
-                        "true_section_end": section.end_sentence_index,
+                        "true_section_end": section.stop_sentence_index,
                         "predicted_section_min_distance_sentence_idx": (
                             section_min_distance_details.sentence_index
                         ),
