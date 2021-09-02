@@ -1,9 +1,7 @@
 cdp-backend~=3.0.0.dev11
-ipython
-jupyterlab
-numpy
-pandas
-matplotlib
-sentence-transformers
-altair
-seaborn
+jupyterlab~=3.1
+numpy~=1.21
+pandas~=1.3
+matplotlib~=3.4
+sentence-transformers~=2.0
+seaborn~=0.11.2
