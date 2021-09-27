@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Union
+from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from cdp_backend.pipeline.transcript_model import SectionAnnotation, Transcript
+from cdp_backend.pipeline.transcript_model import Transcript
 from sentence_transformers import SentenceTransformer
+from sentence_transformers.util import cos_sim
 from tqdm import tqdm
 
 sns.set_theme(style="darkgrid")
@@ -22,6 +23,7 @@ PLOTS = Path("plots").resolve()
 PLOTS.mkdir(exist_ok=True)
 SUMMARIES = Path("summaries").resolve()
 SUMMARIES.mkdir(exist_ok=True)
+ARCHETYPAL_CUE_SENTENCE_ENCODING_PATH = Path("archetypal-cue-sentence.npy", strict=True)
 
 TRANSFORMER = SentenceTransformer(
     "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
@@ -30,63 +32,55 @@ TRANSFORMER = SentenceTransformer(
 ###############################################################################
 
 
-def get_full_section_description(anno: SectionAnnotation) -> str:
-    if anno.description is not None:
-        return f"{anno.name}, {anno.description}"
-
-    return f"{anno.name}"
-
-
-class SectionDetails(NamedTuple):
-    name: str
-    seed: str
-
-
-class EmbeddedSectionDetails(NamedTuple):
-    details: SectionDetails
-    embedding: np.ndarray
-
-
 def process_transcript(
-    section_details: List[SectionDetails], transcript: Transcript
-) -> pd.DataFrame:
-    # Get all section embeddings
-    embedded_sections: List[EmbeddedSectionDetails] = []
-    for details in section_details:
-        embedded_sections.append(
-            EmbeddedSectionDetails(
-                details=details,
-                embedding=TRANSFORMER.encode(details.seed),
-            )
-        )
+    transcript: Transcript,
+    archetypal_cue_sentence: np.ndarray,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # TODO:
+    # Should be provided with num_sections
+
+    # Check transcript is annotated
+    if transcript.annotations is None or transcript.annotations.sections is None:
+        raise KeyError("Transcript has no annotations")
+
+    # Get N sections
+    num_sections = len(transcript.annotations.sections)
 
     # Process all sentences and store section data as
-    # [{"sentence_index": 1, "section_name": "CB 1111", "similarity": 11.51}, ... ]
-    section_data: List[Dict[str, Union[int, str, np.float32]]] = []
+    # [{"sentence_index": 1, "dist_sim": 5.123}, ... ]
+    sentence_data: List[Dict[str, Union[int, str, np.float32]]] = []
 
-    # Safety measure to ensure the transcript sentences are in sorted order
-    for sentence in tqdm(
-        sorted(transcript.sentences, key=lambda s: s.index), "Sentences processed"
-    ):
-        # Get this sentence embedding and get distance from each section embedding
-        sentence_embedding = TRANSFORMER.encode(sentence.text)
-        for section_embedding in embedded_sections:
-            section_data.append(
-                {
-                    "sentence_index": sentence.index,
-                    "section_name": section_embedding.details.name,
-                    "distance": np.linalg.norm(
-                        section_embedding.embedding - sentence_embedding
-                    ),
-                }
-            )
+    # Iter all sentences, get encoding, compute metrics and get meta
+    for sentence in tqdm(transcript.sentences, "Sentences processed"):
+        # Get this sentence encoding and get distance from each section embedding
+        sentence_encoding = TRANSFORMER.encode(sentence.text)
+        sentence_data.append(
+            {
+                "sentence_index": sentence.index,
+                "sentence_text": sentence.text,
+                "dist_sim": np.linalg.norm(archetypal_cue_sentence - sentence_encoding),
+                "cos_sim": cos_sim(archetypal_cue_sentence, sentence_encoding).numpy()[
+                    0, 0
+                ],
+            }
+        )
 
-    return pd.DataFrame(section_data)
+    # Convert to dataframe
+    sentence_distances = pd.DataFrame(sentence_data)
+
+    # Get closest N sentences and return
+    selected_sentences = sentence_distances.sort_values(by="cos_sim", ascending=False)[
+        :num_sections
+    ]
+    return sentence_distances, selected_sentences
 
 
 ###############################################################################
 
 if __name__ == "__main__":
+    # Load archetype
+    archetypal_cue_sentence = np.load(ARCHETYPAL_CUE_SENTENCE_ENCODING_PATH)
+
     # Read and process each transcript
     for transcript_path in tqdm(
         list(ANNOTATED_DATASET.glob("*-transcript.json")), "Transcripts processed"
@@ -97,15 +91,9 @@ if __name__ == "__main__":
                 transcript = Transcript.from_json(open_file.read())  # type: ignore
 
             # Process
-            transcript_results = process_transcript(
-                section_details=[
-                    SectionDetails(
-                        name=section.name,
-                        seed=get_full_section_description(section),
-                    )
-                    for section in transcript.annotations.sections
-                ],
+            all_transcript_sentence_distances, selected_breaks = process_transcript(
                 transcript=transcript,
+                archetypal_cue_sentence=archetypal_cue_sentence,
             )
 
             # Clear any existing plots
@@ -115,10 +103,9 @@ if __name__ == "__main__":
             # Plot new
             sns.relplot(
                 x="sentence_index",
-                y="distance",
-                hue="section_name",
+                y="dist_sim",
                 kind="line",
-                data=transcript_results,
+                data=all_transcript_sentence_distances,
             )
 
             # Save
@@ -126,41 +113,8 @@ if __name__ == "__main__":
                 PLOTS / transcript_path.with_suffix(".png").name, bbox_inches="tight"
             )
 
-            # Summarize
-            summarized_transcript_results_list: List[
-                Dict[str, Union[str, int, np.float32]]
-            ] = []
-            for section in transcript.annotations.sections:
-                section_min_distance_idx = transcript_results[
-                    transcript_results.section_name == section.name
-                ].distance.idxmin()
-                section_min_distance_details = transcript_results.loc[
-                    section_min_distance_idx
-                ]
-                summarized_transcript_results_list.append(
-                    {
-                        "section_name": section.name,
-                        "true_section_start": section.start_sentence_index,
-                        "true_section_end": section.stop_sentence_index,
-                        "predicted_section_min_distance_sentence_idx": (
-                            section_min_distance_details.sentence_index
-                        ),
-                        "predicted_section_min_distance_sentence_text": (
-                            transcript.sentences[
-                                section_min_distance_details.sentence_index
-                            ].text
-                        ),
-                        "predicted_section_min_distance": (
-                            section_min_distance_details.distance
-                        ),
-                    }
-                )
-
             # Save summary to CSV
-            summarized_transcript_results = pd.DataFrame(
-                summarized_transcript_results_list
-            )
-            summarized_transcript_results.to_csv(
+            selected_breaks.to_csv(
                 SUMMARIES
                 / transcript_path.with_suffix(".csv").name.replace(
                     "transcript", "summary"
