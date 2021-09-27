@@ -10,7 +10,7 @@ with open("README.md") as readme_file:
 
 setup_requirements = [
     "pytest-runner>=5.2",
-    "wheel",
+    "wheel>=0.34.2",
 ]
 
 test_requirements = [
@@ -49,10 +49,12 @@ dev_requirements = [
 
 requirements = [
     "cdp-backend>=3.0.0.dev18",
+    "fsspec",  # no pin, get from cdp-backend
     "numpy>=1.21",
     "pandas>=1.3",
     "scipy>=1.7.1",
     "sentence-transformers>=2.0",
+    "tqdm>=4.62.2",
 ]
 
 extra_requirements = {
@@ -62,7 +64,7 @@ extra_requirements = {
     "all": [
         *requirements,
         *dev_requirements,
-    ]
+    ],
 }
 
 setup(
@@ -81,8 +83,8 @@ setup(
     entry_points={
         "console_scripts": [
             (
-                "get-average-cue-sentence-encoding="
-                "cue_queue.bin.get_average_cue_sentence_encoding:main"
+                "get-average-cue-sentence-encoding-for-corpus="
+                "cue_queue.bin.get_average_cue_sentence_encoding_for_corpus:main"
             ),
         ],
     },
@@ -93,14 +95,16 @@ setup(
     include_package_data=True,
     keywords="cue_queue",
     name="cue_queue",
-    packages=find_packages(exclude=[
-        "tests",
-        "*.tests",
-        "*.tests.*",
-        "benchmarks",
-        "*.benchmarks",
-        "*.benchmarks.*",
-    ]),
+    packages=find_packages(
+        exclude=[
+            "tests",
+            "*.tests",
+            "*.tests.*",
+            "benchmarks",
+            "*.benchmarks",
+            "*.benchmarks.*",
+        ]
+    ),
     python_requires=">=3.9",
     setup_requires=setup_requirements,
     test_suite="cue_queue/tests",
