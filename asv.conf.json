@@ -1,0 +1,20 @@
+{
+    "version": 1,
+    "project": "cue-queue",
+    "project_url": "http://JacksonMaxfield.github.io/cue-queue/",
+    "repo": ".",
+    "branches": ["main"],
+    "dvcs": "git",
+    "environment_type": "virtualenv",
+    "install_command": [
+        "in-dir={env_dir} python -mpip install {build_dir}[benchmark]"
+    ],
+    "show_commit_url": "http://github.com/JacksonMaxfield/cue-queue/commit/",
+    "pythons": ["3.9"],
+    "benchmark_dir": "benchmarks",
+    "env_dir": ".asv/env",
+    "results_dir": ".asv/results",
+    "html_dir": ".asv/html",
+    "hash_length": 8,
+    "build_cache_size": 8
+}

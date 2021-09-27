@@ -67,7 +67,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
-docs/cdp_backend.*rst
+docs/cue_queue.*rst
 docs/modules.rst
 
 # PyBuilder
