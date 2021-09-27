@@ -1,0 +1,37 @@
+cue\_queue package
+==================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   cue_queue.bin
+
+Submodules
+----------
+
+cue\_queue.core module
+----------------------
+
+.. automodule:: cue_queue.core
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+cue\_queue.incremental\_average module
+--------------------------------------
+
+.. automodule:: cue_queue.incremental_average
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: cue_queue
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,21 @@
+cue\_queue.bin package
+======================
+
+Submodules
+----------
+
+cue\_queue.bin.get\_average\_cue\_sentence\_encoding\_for\_corpus module
+------------------------------------------------------------------------
+
+.. automodule:: cue_queue.bin.get_average_cue_sentence_encoding_for_corpus
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: cue_queue.bin
+   :members:
+   :undoc-members:
+   :show-inheritance:
