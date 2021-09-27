@@ -74,7 +74,7 @@ def _get_average_cue_sentence_encoding_for_corpus(
 
     # Generate average sentence encoding
     average_encoding = get_average_cue_sentence_encoding_for_corpus(
-        transcript_uris=fs.ls(path),
+        transcripts=fs.ls(path),
         strict=strict,
     )
 

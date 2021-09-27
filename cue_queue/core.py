@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from typing import TYPE_CHECKING, Iterable, Optional, Type
+from typing import TYPE_CHECKING, Iterable, Optional, Type, Union
 
 import fsspec
 from cdp_backend.pipeline.transcript_model import Transcript
@@ -34,7 +34,7 @@ def _load_transformer(
 
 
 def get_average_cue_sentence_encoding_for_transcript(
-    transcript_uri: str,
+    transcript: Union[str, Transcript],
     transformer: Optional[Type[SentenceTransformer]] = None,
     strict: bool = False,
 ) -> "np.ndarray":
@@ -43,8 +43,9 @@ def get_average_cue_sentence_encoding_for_transcript(
 
     Parameters
     ----------
-    transcript_uri: str
-        The URI for the transcript to read and process.
+    transcript: Union[str, Transcript]
+        The URI for the transcript, or the already loaded transcript,
+        to read and process.
     transformer: Optional[Type[SentenceTransformer]]
         An optional transformer to use for generating encodings from the cue sentences.
         Default: None (use sentence-transformers/paraphrase-xlm-r-multilingual-v1)
@@ -67,20 +68,26 @@ def get_average_cue_sentence_encoding_for_transcript(
     incremental_average = IncrementalAverage()
 
     # Read transcript
-    with fsspec.open(transcript_uri, "r") as open_resource:
-        transcript = Transcript.from_json(open_resource.read())
+    if isinstance(transcript, str):
+        with fsspec.open(transcript, "r") as open_resource:
+            loaded_transcript = Transcript.from_json(open_resource.read())
+    else:
+        loaded_transcript = transcript
 
     # Check section annotations are provided
-    if transcript.annotations is None or transcript.annotations.sections is None:
+    if (
+        loaded_transcript.annotations is None
+        or loaded_transcript.annotations.sections is None
+    ):
         raise KeyError("Transcript has no annotations")
 
     # Get existing sections
-    sections = transcript.annotations.sections
+    sections = loaded_transcript.annotations.sections
 
     # Iter section annotations and get section start sentence
     for section in sections:
         try:
-            section_start = transcript.sentences[section.start_sentence_index]
+            section_start = loaded_transcript.sentences[section.start_sentence_index]
 
             # Get encoding and add to transcript average
             sentence_embedding = loaded_transformer.encode(
@@ -102,7 +109,7 @@ def get_average_cue_sentence_encoding_for_transcript(
 
 
 def get_average_cue_sentence_encoding_for_corpus(
-    transcript_uris: Iterable[str],
+    transcripts: Iterable[Union[str, Transcript]],
     transformer: Optional[Type[SentenceTransformer]] = None,
     strict: bool = False,
     display_progress: bool = True,
@@ -112,8 +119,8 @@ def get_average_cue_sentence_encoding_for_corpus(
 
     Parameters
     ----------
-    transcript_uris: str
-        All transcript URIs to read and process.
+    transcripts: Iterable[Union[str, Transcript]]
+        All transcript URIs, or all loaded transcripts, to read and process.
     transformer: Optional[Type[SentenceTransformer]]
         An optional transformer to use for generating encodings from the cue sentences.
         Default: None (use sentence-transformers/paraphrase-xlm-r-multilingual-v1)
@@ -138,15 +145,15 @@ def get_average_cue_sentence_encoding_for_corpus(
     try:
         # Get iterator
         if display_progress:
-            iterator = tqdm(transcript_uris, "Transcripts processed")
+            iterator = tqdm(transcripts, "Transcripts processed")
         else:
-            iterator = transcript_uris
+            iterator = transcripts
 
         # Iterate transcripts
-        for transcript_uri in iterator:
+        for transcript in iterator:
             incremental_average.update(
                 get_average_cue_sentence_encoding_for_transcript(
-                    transcript_uri=transcript_uri,
+                    transcript=transcript,
                     transformer=loaded_transformer,
                     strict=strict,
                 )
@@ -157,7 +164,7 @@ def get_average_cue_sentence_encoding_for_corpus(
             raise e
         else:
             log.error(
-                f"Something wrong with transcript: {transcript_uri}, skipping. "
+                f"Something wrong with transcript: {transcript}, skipping. "
                 f"Error: {e}"
             )
 
