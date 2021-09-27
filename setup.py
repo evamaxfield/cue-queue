@@ -25,6 +25,7 @@ test_requirements = [
     "pytest>=5.4.3",
     "pytest-cov>=2.9.0",
     "pytest-raises>=0.11",
+    "tox>=3.15.2",
     "types-pytz>=2021.1.2",
     "types-requests~=0.1.11",
 ]
@@ -42,7 +43,6 @@ dev_requirements = [
     "seaborn~=0.11.2",
     "Sphinx>=3.4.3",
     "sphinx_rtd_theme>=0.5.1",
-    "tox>=3.15.2",
     "twine>=3.1.1",
     "wheel>=0.34.2",
 ]
