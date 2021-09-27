@@ -20,9 +20,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install .[test]
-    - name: Test with pytest
-      run: |
-        pytest cue_queue/tests/
+    - name: Run tests with Tox
+      # Run tox using the version of Python in `PATH`
+      run: tox -e py
     - name: Upload codecov
       uses: codecov/codecov-action@v1
 
@@ -39,9 +39,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install .[test]
-    - name: Lint with flake8
+    - name: Install Dependencies
       run: |
-        flake8 cue_queue --count --verbose --show-source --statistics
-    - name: Check with black
-      run: |
-        black --check cue_queue
+        python -m pip install --upgrade pip
+        pip install pre-commit
+    - name: Lint
+      run: pre-commit run --all-files --show-diff-on-failure
