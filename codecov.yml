@@ -1,0 +1,6 @@
+ignore:
+    - "**/__init__.py"
+
+coverage:
+  status:
+    patch: off

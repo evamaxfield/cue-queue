@@ -1,33 +1,24 @@
-# Cue-Queue
+# cue-queue
 
-Prototype work for solving Council Data Project's
-[Linear Topic Segmentation Problem](https://github.com/CouncilDataProject/cdp-roadmap/issues/9).
+[![Build Status](https://github.com/JacksonMaxfield/cue-queue/workflows/Build%20Main/badge.svg)](https://github.com/JacksonMaxfield/cue-queue/actions)
+[![Documentation](https://github.com/JacksonMaxfield/cue-queue/workflows/Documentation/badge.svg)](https://JacksonMaxfield.github.io/cue-queue/)
+[![Code Coverage](https://codecov.io/gh/JacksonMaxfield/cue-queue/branch/main/graph/badge.svg)](https://codecov.io/gh/JacksonMaxfield/cue-queue)
 
-## Steps
+Transcript segmentation using the average semantic encodings of cue sentences.
 
-### Generation of Encoding
+---
 
-1. Create collection section break sentences ("cue sentences") for each transcript
-2. Processing all section break sentences:
-    1. Run TF-IDF over section break sentences to find the common terms
-       that are generally used in such sentences.
-       These can be thought of as "cue phrases"
-    2. Create encodings of all "cue sentences" and take average of them all to
-       create a "general cue sentence encoding".
-3. Store the general "cue sentence encoding" and "commen cue phrases".
+## Installation
 
-### Usage of Encodings
+**Stable Release:** `pip install cue-queue`<br>
+**Development Head:** `pip install git+https://github.com/JacksonMaxfield/cue-queue.git`
 
-1. For each sentence:
-    1. Generate and store the distance of the sentence from the
-       "general cue sentence encoding".
-    2. (Optional for validation) Generate and store the distance of the sentence
-       from each topic.
-2. Find the `N` most similar (least distant) sentences from the
-   "general cue sentence encoding", where `N` is the number of topics.
-3. Using the found `N` most similar sentences to the "general cue sentence encoding,"
-   search for the single sentence within a window with the highest term frequency of
-   terms in the TFIDF "common cue phrases set."
-4. Apply labels by zipping the selected cue sentences and the topics.
-5. Optionally validate by taking average of all sentence encodings within each section
-   and ensure all distances meet some threshold.
+## Documentation
+
+For full package documentation please visit [JacksonMaxfield.github.io/cue-queue](https://JacksonMaxfield.github.io/cue-queue).
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for information related to developing the code.
+
+**MIT license**

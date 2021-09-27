@@ -67,7 +67,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
-docs/cdp_backend.*rst
+docs/cue_queue.*rst
 docs/modules.rst
 
 # PyBuilder
@@ -121,7 +121,7 @@ annotated/
 plots/
 summaries/
 unannotated/
-cue-phrases-tfidf.csv
+average-cue-sentence.npy
 
 # Common credentials directories
 .keys/
