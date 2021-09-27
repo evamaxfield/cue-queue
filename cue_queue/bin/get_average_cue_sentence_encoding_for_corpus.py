@@ -6,7 +6,6 @@ import logging
 import sys
 import traceback
 
-import fsspec
 import numpy as np
 from fsspec.core import url_to_fs
 
@@ -42,10 +41,13 @@ class Args(argparse.Namespace):
         )
         p.add_argument(
             "-o",
-            "--output_uri",
+            "--output_path",
             type=str,
             default="average-cue-sentence.npy",
-            help="Output path to save the average cue sentence encoding to.",
+            help=(
+                "Output path to save the average cue sentence encoding to. "
+                "Must be local."
+            ),
         )
         p.add_argument(
             "-s",
@@ -64,7 +66,7 @@ class Args(argparse.Namespace):
 
 def _get_average_cue_sentence_encoding_for_corpus(
     annotated_transcripts_dir: str,
-    output_uri: str,
+    output_path: str,
     strict: bool = False,
 ) -> None:
     # Get fs and path specification
@@ -77,8 +79,7 @@ def _get_average_cue_sentence_encoding_for_corpus(
     )
 
     # Save
-    with fsspec.open(output_uri, "w") as open_resource:
-        np.save(open_resource, average_encoding)
+    np.save(output_path, average_encoding)
 
 
 def main() -> None:
@@ -86,7 +87,7 @@ def main() -> None:
         args = Args()
         _get_average_cue_sentence_encoding_for_corpus(
             annotated_transcripts_dir=args.annotated_transcripts_dir,
-            output_uri=args.output_uri,
+            output_path=args.output_path,
             strict=args.strict,
         )
     except Exception as e:

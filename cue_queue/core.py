@@ -83,7 +83,9 @@ def get_average_cue_sentence_encoding_for_transcript(
             section_start = transcript.sentences[section.start_sentence_index]
 
             # Get encoding and add to transcript average
-            sentence_embedding = loaded_transformer.encode(section_start.text)
+            sentence_embedding = loaded_transformer.encode(
+                section_start.text, show_progress_bar=False
+            )
             incremental_average.update(sentence_embedding)
 
         except Exception as e:
@@ -103,6 +105,7 @@ def get_average_cue_sentence_encoding_for_corpus(
     transcript_uris: Iterable[str],
     transformer: Optional[Type[SentenceTransformer]] = None,
     strict: bool = False,
+    display_progress: bool = True,
 ) -> "np.ndarray":
     """
     Get the average cue sentence encoding for a whole corpus.
@@ -117,6 +120,9 @@ def get_average_cue_sentence_encoding_for_corpus(
     strict: bool
         When True, will raise on any transcript error.
         Default: False (skip problematic transcripts)
+    display_progress: bool
+        When True, will show a progress bar for transcripts processed.
+        Default: True (show progress bar)
 
     Returns
     -------
@@ -130,7 +136,14 @@ def get_average_cue_sentence_encoding_for_corpus(
     incremental_average = IncrementalAverage()
 
     try:
-        for transcript_uri in tqdm(transcript_uris):
+        # Get iterator
+        if display_progress:
+            iterator = tqdm(transcript_uris, "Transcripts processed")
+        else:
+            iterator = transcript_uris
+
+        # Iterate transcripts
+        for transcript_uri in iterator:
             incremental_average.update(
                 get_average_cue_sentence_encoding_for_transcript(
                     transcript_uri=transcript_uri,
