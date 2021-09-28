@@ -121,7 +121,7 @@ annotated/
 plots/
 summaries/
 unannotated/
-average-delimiter-sentence.npy
+cue-queue.pkl
 
 # Common credentials directories
 .keys/

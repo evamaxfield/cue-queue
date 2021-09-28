@@ -83,10 +83,7 @@ setup(
     ),
     entry_points={
         "console_scripts": [
-            (
-                "get-average-delimiter-sentence-encoding-for-corpus="
-                "cue_queue.bin.get_average_delimiter_sentence_encoding_for_corpus:main"
-            ),
+            "cue-queue-train=cue_queue.bin.train:main",
         ],
     },
     install_requires=requirements,
@@ -95,7 +92,7 @@ setup(
     long_description_content_type="text/markdown",
     include_package_data=True,
     keywords="cue_queue",
-    name="cue_queue",
+    name="cue-queue",
     packages=find_packages(
         exclude=[
             "tests",

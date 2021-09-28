@@ -6,7 +6,7 @@ import logging
 import sys
 import traceback
 
-from fsspec.core import url_to_fs
+from cue_queue.core import train_from_corpus
 
 ###############################################################################
 
@@ -25,26 +25,22 @@ class Args(argparse.Namespace):
 
     def __parse(self) -> None:
         p = argparse.ArgumentParser(
-            prog="get-average-delimiter-encoding-for-corpus",
+            prog="cue-queue-train",
             description=(
-                "Process annotated transcripts, generate an average delimiter sentence "
-                "encoding, and store to numpy array."
+                "Train a text cue sentence classifier model using the provided corpus."
             ),
         )
         p.add_argument(
-            "annotated_transcripts_dir",
+            "corpus_uri",
             type=str,
             help="URI to annotated transcripts directory.",
         )
         p.add_argument(
             "-o",
-            "--output_path",
+            "--output_uri",
             type=str,
-            default="average-delimiter-sentence.npy",
-            help=(
-                "Output path to save the average delimiter sentence encoding to. "
-                "Must be local."
-            ),
+            default="cue-queue.pkl",
+            help="Output URI to save the trained cue-queue model.",
         )
         p.add_argument(
             "-s",
@@ -61,30 +57,12 @@ class Args(argparse.Namespace):
 ###############################################################################
 
 
-def _get_average_delimiter_sentence_encoding_for_corpus(
-    annotated_transcripts_dir: str,
-    output_path: str,
-    strict: bool = False,
-) -> None:
-    # Get fs and path specification
-    fs, path = url_to_fs(annotated_transcripts_dir)
-
-    # Generate average sentence encoding
-    # average_encoding = get_average_delimiter_encoding_for_corpus(
-    #     transcripts=fs.ls(path),
-    #     strict=strict,
-    # )
-
-    # # Save
-    # np.save(output_path, average_encoding)
-
-
 def main() -> None:
     try:
         args = Args()
-        _get_average_delimiter_sentence_encoding_for_corpus(
-            annotated_transcripts_dir=args.annotated_transcripts_dir,
-            output_path=args.output_path,
+        train_from_corpus(
+            corpus_uri=args.corpus_uri,
+            output_uri=args.output_uri,
             strict=args.strict,
         )
     except Exception as e:

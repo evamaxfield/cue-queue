@@ -2,11 +2,18 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
+import pickle
+import random
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import fsspec
 import numpy as np
-from cdp_backend.pipeline.transcript_model import Transcript
+from cdp_backend.pipeline.transcript_model import (
+    SectionAnnotation,
+    Transcript,
+    TranscriptAnnotations,
+)
+from fsspec.core import url_to_fs
 from segeval import boundary_similarity, convert_nltk_to_masses
 from sentence_transformers import SentenceTransformer
 from sklearn.ensemble import RandomForestClassifier
@@ -25,7 +32,7 @@ log = logging.getLogger(__name__)
 
 
 def _load_transformer(
-    transformer: Optional[Type[SentenceTransformer]],
+    transformer: Optional[SentenceTransformer],
 ) -> SentenceTransformer:
     # Load or pass on transformer
     if transformer is None:
@@ -45,6 +52,17 @@ def _load_transcript(
     return transcript
 
 
+def _load_model(
+    model: Union[str, RandomForestClassifier],
+) -> RandomForestClassifier:
+    # Load or pass
+    if isinstance(model, str):
+        with fsspec.open(model, "rb") as open_resource:
+            return pickle.load(open_resource)
+
+    return model
+
+
 def _get_optional_display_iter(
     iterable: Iterable,
     display_progress: bool = True,
@@ -59,7 +77,7 @@ def _get_optional_display_iter(
 
 def get_encodings_for_transcript(
     transcript: Union[str, Transcript],
-    transformer: Optional[Type[SentenceTransformer]] = None,
+    transformer: Optional[SentenceTransformer] = None,
     display_progress: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -70,7 +88,7 @@ def get_encodings_for_transcript(
     transcript: Union[str, Transcript]
         The URI for the transcript, or the already loaded transcript,
         to read and process.
-    transformer: Optional[Type[SentenceTransformer]]
+    transformer: Optional[SentenceTransformer]
         An optional transformer to use for generating semantic encodings.
         Default: None (use DEFAULT_TRANSFORMER)
     display_progress: bool
@@ -123,7 +141,7 @@ def get_encodings_for_transcript(
 
 def get_encodings_for_corpus(
     transcripts: Iterable[Union[str, Transcript]],
-    transformer: Optional[Type[SentenceTransformer]] = None,
+    transformer: Optional[SentenceTransformer] = None,
     strict: bool = False,
     display_progress: bool = True,
 ) -> "np.ndarray":
@@ -134,7 +152,7 @@ def get_encodings_for_corpus(
     ----------
     transcripts: Iterable[Union[str, Transcript]]
         All transcript URIs, or all loaded transcripts, to read and process.
-    transformer: Optional[Type[SentenceTransformer]]
+    transformer: Optional[SentenceTransformer]
         An optional transformer to use for generating encodings
         from the delimiter sentences.
         Default: None (use DEFAULT_TRANSFORMER)
@@ -189,31 +207,48 @@ def get_encodings_for_corpus(
 
 def train(
     encodings: np.ndarray, labels: np.ndarray, model_kwargs: Dict[str, Any] = {}
-) -> Tuple[Type[RandomForestClassifier], np.ndarray]:
+) -> Tuple[RandomForestClassifier, np.ndarray]:
     # Init basics
     model = RandomForestClassifier(**model_kwargs)
-    cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
-    n_scores = cross_val_score(
+    model.fit(encodings, labels)
+    return model
+
+
+def eval_model(
+    model: RandomForestClassifier,
+    encodings: np.ndarray,
+    labels: np.ndarray,
+    kfold_kwargs: Dict[str, Any] = {
+        "n_splits": 10,
+        "n_repeats": 3,
+        "random_state": 1,
+    },
+    cross_val_kwargs: Dict[str, Any] = {
+        "scoring": "accuracy",
+        "n_jobs": -1,
+        "error_score": "raise",
+    },
+) -> np.ndarray:
+    cv = RepeatedStratifiedKFold(**kfold_kwargs)
+    return cross_val_score(
         model,
         encodings,
         labels,
-        scoring="accuracy",
         cv=cv,
-        n_jobs=-1,
-        error_score="raise",
+        **cross_val_kwargs,
     )
-    return model, n_scores
 
 
 def segment(
     transcript: Union[str, Transcript],
-    model: Type[RandomForestClassifier],
-    transformer: Optional[Type[SentenceTransformer]] = None,
+    model: Union[str, RandomForestClassifier],
+    transformer: Optional[SentenceTransformer] = None,
     overwrite_annotations: bool = True,
     display_progress: bool = True,
 ) -> Transcript:
-    # Load or use provided transformer and encoding
+    # Load or use provided transformer and encoding and model
     loaded_transformer = _load_transformer(transformer)
+    loaded_model = _load_model(model)
 
     # Read transcript
     loaded_transcript = _load_transcript(transcript)
@@ -229,19 +264,56 @@ def segment(
             "and `overwrite_annotations` was not set to True."
         )
 
+    # Init sections annotations
+    if loaded_transcript.annotations is None:
+        loaded_transcript.annotations = TranscriptAnnotations()
+
+    loaded_transcript.annotations.sections = []
+
     # Iter all sentences, get encoding, and store cos sim to average delimiter encoding
-    labels: List[int] = []
     iterator = _get_optional_display_iter(
         loaded_transcript.sentences,
         display_progress=display_progress,
         message="Sentences processed",
     )
+    section_start = None
+    section_counter = 0
     for sentence in iterator:
         # Get this sentence encoding and get distance from each section embedding
-        sentence_encoding = loaded_transformer.encode(sentence.text)
-        labels.append(model.predict(sentence_encoding))
+        sentence_encoding = np.expand_dims(
+            loaded_transformer.encode(sentence.text, show_progress_bar=False),
+            axis=0,
+        )
+        predicted_label = loaded_model.predict(sentence_encoding)[0]
+        if predicted_label == 1:
+            if section_start is None:
+                section_start = sentence.index
+            else:
+                loaded_transcript.annotations.sections.append(
+                    SectionAnnotation(
+                        name=f"Section #{section_counter}",
+                        start_sentence_index=section_start,
+                        stop_sentence_index=sentence.index,
+                        # TODO: Attach version
+                        generator="cue-queue",
+                    )
+                )
+                section_start = None
+                section_counter += 1
 
-    return labels
+    # Handle last section
+    if section_start is not None:
+        loaded_transcript.annotations.sections.append(
+            SectionAnnotation(
+                name=f"Section #{section_counter}",
+                start_sentence_index=section_start,
+                stop_sentence_index=sentence.index,
+                # TODO: Attach version
+                generator="cue-queue",
+            )
+        )
+
+    return loaded_transcript
 
 
 def _get_nltk_seg_string_from_transcript(transcript: Transcript) -> str:
@@ -261,7 +333,9 @@ def _get_nltk_seg_string_from_transcript(transcript: Transcript) -> str:
     return nltk_seg
 
 
-def eval(true: Union[str, Transcript], pred: Union[str, Transcript]) -> float:
+def eval_segmentation(
+    true: Union[str, Transcript], pred: Union[str, Transcript]
+) -> float:
     # Read transcripts
     loaded_true = _load_transcript(true)
     loaded_pred = _load_transcript(pred)
@@ -277,3 +351,65 @@ def eval(true: Union[str, Transcript], pred: Union[str, Transcript]) -> float:
             convert_nltk_to_masses(nltk_pred),
         )
     )
+
+
+def train_from_corpus(
+    corpus_uri: str,
+    output_uri: str,
+    strict: bool = False,
+) -> RandomForestClassifier:
+    # Get fs and path specification and corpus list
+    log.info("Collecting corpus document URIs.")
+    fs, path = url_to_fs(corpus_uri)
+    corpus = fs.ls(path)
+
+    # Get encodings and labels for all docs in corpus
+    log.info("Beginning encoding of all documents in corpus.")
+    encodings, labels = get_encodings_for_corpus(corpus, strict=strict)
+
+    # Train
+    log.info("Beginning model training.")
+    model = train(encodings=encodings, labels=labels)
+    log.info("Completed model training.")
+
+    # Save model
+    with fsspec.open(output_uri, "wb") as open_resource:
+        pickle.dump(model, open_resource)
+
+    # Eval
+    log.info("Beginning model evaluation.")
+    score = eval_model(model=model, encodings=encodings, labels=labels)
+    log.info("Completed model evaluation.")
+    log.info(
+        f"Strict model classification accuracy: "
+        f"{np.mean(score).round(6)} "
+        f"(std: {np.std(score).round(6)})"
+    )
+
+    # Sample predict
+    log.info("Appling model to sample documents for segmentation accuracy.")
+    sample = random.sample(corpus, min([10, len(corpus)]))
+    seg_evals_list: List[float] = []
+    for doc in sample:
+        # Segment
+        segmented_transcript = segment(doc, model)
+
+        labels_true = _get_nltk_seg_string_from_transcript(_load_transcript(doc))
+        labels_pred = _get_nltk_seg_string_from_transcript(segmented_transcript)
+        seg_evals_list.append(
+            float(
+                boundary_similarity(
+                    convert_nltk_to_masses(labels_true),
+                    convert_nltk_to_masses(labels_pred),
+                )
+            )
+        )
+    seg_evals = np.asarray(seg_evals_list)
+    log.info("Completed sample prediction.")
+    log.info(
+        f"Segmentation accuracy: "
+        f"{np.mean(seg_evals).round(6)} "
+        f"(std: {np.std(seg_evals).round(6)})"
+    )
+
+    return model
