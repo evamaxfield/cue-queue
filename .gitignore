@@ -121,7 +121,7 @@ annotated/
 plots/
 summaries/
 unannotated/
-average-cue-sentence.npy
+average-delimiter-sentence.npy
 
 # Common credentials directories
 .keys/

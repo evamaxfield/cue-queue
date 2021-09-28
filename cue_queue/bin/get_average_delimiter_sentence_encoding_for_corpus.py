@@ -9,7 +9,7 @@ import traceback
 import numpy as np
 from fsspec.core import url_to_fs
 
-from cue_queue import get_average_cue_sentence_encoding_for_corpus
+from cue_queue import get_average_delimiter_encoding_for_corpus
 
 ###############################################################################
 
@@ -28,9 +28,9 @@ class Args(argparse.Namespace):
 
     def __parse(self) -> None:
         p = argparse.ArgumentParser(
-            prog="get-average-cue-sentence-encoding-for-corpus",
+            prog="get-average-delimiter-encoding-for-corpus",
             description=(
-                "Process annotated transcripts, generate an average cue sentence "
+                "Process annotated transcripts, generate an average delimiter sentence "
                 "encoding, and store to numpy array."
             ),
         )
@@ -43,9 +43,9 @@ class Args(argparse.Namespace):
             "-o",
             "--output_path",
             type=str,
-            default="average-cue-sentence.npy",
+            default="average-delimiter-sentence.npy",
             help=(
-                "Output path to save the average cue sentence encoding to. "
+                "Output path to save the average delimiter sentence encoding to. "
                 "Must be local."
             ),
         )
@@ -64,7 +64,7 @@ class Args(argparse.Namespace):
 ###############################################################################
 
 
-def _get_average_cue_sentence_encoding_for_corpus(
+def _get_average_delimiter_sentence_encoding_for_corpus(
     annotated_transcripts_dir: str,
     output_path: str,
     strict: bool = False,
@@ -73,7 +73,7 @@ def _get_average_cue_sentence_encoding_for_corpus(
     fs, path = url_to_fs(annotated_transcripts_dir)
 
     # Generate average sentence encoding
-    average_encoding = get_average_cue_sentence_encoding_for_corpus(
+    average_encoding = get_average_delimiter_encoding_for_corpus(
         transcripts=fs.ls(path),
         strict=strict,
     )
@@ -85,7 +85,7 @@ def _get_average_cue_sentence_encoding_for_corpus(
 def main() -> None:
     try:
         args = Args()
-        _get_average_cue_sentence_encoding_for_corpus(
+        _get_average_delimiter_sentence_encoding_for_corpus(
             annotated_transcripts_dir=args.annotated_transcripts_dir,
             output_path=args.output_path,
             strict=args.strict,

@@ -33,13 +33,13 @@ def _load_transformer(
     return transformer
 
 
-def get_average_cue_sentence_encoding_for_transcript(
+def get_average_delimiter_encoding_for_transcript(
     transcript: Union[str, Transcript],
     transformer: Optional[Type[SentenceTransformer]] = None,
     strict: bool = False,
 ) -> "np.ndarray":
     """
-    Get the average cue sentence encoding for a single transcript.
+    Get the average section delimiter encoding for a single transcript.
 
     Parameters
     ----------
@@ -47,7 +47,8 @@ def get_average_cue_sentence_encoding_for_transcript(
         The URI for the transcript, or the already loaded transcript,
         to read and process.
     transformer: Optional[Type[SentenceTransformer]]
-        An optional transformer to use for generating encodings from the cue sentences.
+        An optional transformer to use for generating encodings
+        from the delimiter sentences.
         Default: None (use sentence-transformers/paraphrase-xlm-r-multilingual-v1)
     strict: bool
         When True, will raise on any transcript error.
@@ -55,8 +56,8 @@ def get_average_cue_sentence_encoding_for_transcript(
 
     Returns
     -------
-    average_cue_sentence_encoding: np.ndarray
-        The average cue sentence encoding for the provided transcript.
+    average_delimiter_sentence_encoding: np.ndarray
+        The average delimiter sentence encoding for the provided transcript.
     """
     # TODO:
     # Allow N window around section start to gather
@@ -108,21 +109,22 @@ def get_average_cue_sentence_encoding_for_transcript(
     return incremental_average.average
 
 
-def get_average_cue_sentence_encoding_for_corpus(
+def get_average_delimiter_encoding_for_corpus(
     transcripts: Iterable[Union[str, Transcript]],
     transformer: Optional[Type[SentenceTransformer]] = None,
     strict: bool = False,
     display_progress: bool = True,
 ) -> "np.ndarray":
     """
-    Get the average cue sentence encoding for a whole corpus.
+    Get the average section delimiter encoding for a whole corpus.
 
     Parameters
     ----------
     transcripts: Iterable[Union[str, Transcript]]
         All transcript URIs, or all loaded transcripts, to read and process.
     transformer: Optional[Type[SentenceTransformer]]
-        An optional transformer to use for generating encodings from the cue sentences.
+        An optional transformer to use for generating encodings
+        from the delimiter sentences.
         Default: None (use sentence-transformers/paraphrase-xlm-r-multilingual-v1)
     strict: bool
         When True, will raise on any transcript error.
@@ -133,8 +135,8 @@ def get_average_cue_sentence_encoding_for_corpus(
 
     Returns
     -------
-    average_cue_sentence_encoding: np.ndarray
-        The average cue sentence encoding for the provided corpus.
+    average_delimiter_sentence_encoding: np.ndarray
+        The average delimiter sentence encoding for the provided corpus.
     """
     # Load or use provided transformer
     loaded_transformer = _load_transformer(transformer)
@@ -152,7 +154,7 @@ def get_average_cue_sentence_encoding_for_corpus(
         # Iterate transcripts
         for transcript in iterator:
             incremental_average.update(
-                get_average_cue_sentence_encoding_for_transcript(
+                get_average_delimiter_encoding_for_transcript(
                     transcript=transcript,
                     transformer=loaded_transformer,
                     strict=strict,
@@ -169,3 +171,10 @@ def get_average_cue_sentence_encoding_for_corpus(
             )
 
     return incremental_average.average
+
+
+def segment(
+    transcript: Union[str, Transcript],
+    delimiter_encoding: Union[str, "np.ndarray"],
+) -> Transcript:
+    pass

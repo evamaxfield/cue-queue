@@ -78,13 +78,14 @@ setup(
         "Programming Language :: Python :: 3.9",
     ],
     description=(
-        "Transcript segmentation using average semantic encodings of cue sentences."
+        "Transcript segmentation using average semantic encodings of "
+        "delimiter (cue) sentences."
     ),
     entry_points={
         "console_scripts": [
             (
-                "get-average-cue-sentence-encoding-for-corpus="
-                "cue_queue.bin.get_average_cue_sentence_encoding_for_corpus:main"
+                "get-average-delimiter-sentence-encoding-for-corpus="
+                "cue_queue.bin.get_average_delimiter_sentence_encoding_for_corpus:main"
             ),
         ],
     },

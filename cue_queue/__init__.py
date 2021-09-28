@@ -10,8 +10,8 @@ __email__ = "jmaxfieldbrown@gmail.com"
 # Details in CONTRIBUTING.md
 __version__ = "4.1.0"
 
-from .core import get_average_cue_sentence_encoding_for_corpus  # noqa: F401
-from .core import get_average_cue_sentence_encoding_for_transcript  # noqa: F401
+from .core import get_average_delimiter_encoding_for_corpus  # noqa: F401
+from .core import get_average_delimiter_encoding_for_transcript  # noqa: F401
 
 
 def get_module_version() -> str:
