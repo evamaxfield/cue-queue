@@ -6,10 +6,7 @@ import logging
 import sys
 import traceback
 
-import numpy as np
 from fsspec.core import url_to_fs
-
-from cue_queue import get_average_delimiter_encoding_for_corpus
 
 ###############################################################################
 
@@ -73,13 +70,13 @@ def _get_average_delimiter_sentence_encoding_for_corpus(
     fs, path = url_to_fs(annotated_transcripts_dir)
 
     # Generate average sentence encoding
-    average_encoding = get_average_delimiter_encoding_for_corpus(
-        transcripts=fs.ls(path),
-        strict=strict,
-    )
+    # average_encoding = get_average_delimiter_encoding_for_corpus(
+    #     transcripts=fs.ls(path),
+    #     strict=strict,
+    # )
 
-    # Save
-    np.save(output_path, average_encoding)
+    # # Save
+    # np.save(output_path, average_encoding)
 
 
 def main() -> None:

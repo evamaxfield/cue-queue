@@ -51,8 +51,8 @@ requirements = [
     "cdp-backend>=3.0.0.dev18",
     "fsspec",  # no pin, get from cdp-backend
     "numpy>=1.21",
-    "pandas>=1.3",
-    "scipy>=1.7.1",
+    "scikit-learn>=0.24.2",
+    "segeval>=2.0.11",
     "sentence-transformers>=2.0",
     "tqdm>=4.62.2",
 ]
