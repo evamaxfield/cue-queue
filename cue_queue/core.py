@@ -4,7 +4,8 @@
 import logging
 import pickle
 import random
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from re import split
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 import fsspec
 import numpy as np
@@ -29,7 +30,18 @@ DEFAULT_TRANSFORMER = "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
 log = logging.getLogger(__name__)
 
 ###############################################################################
+# Types
 
+
+class ProcessedEncodings(NamedTuple):
+    sentence_encodings: np.ndarray
+    unified_delimiters_sentence_labels: np.ndarray
+    split_delimiters_sentence_labels: np.ndarray
+    unified_delimiters_average_encoding: np.ndarray
+    start_delimiter_average_encoding: np.ndarray
+    stop_delimiter_average_encoding: np.ndarray
+
+###############################################################################
 
 def _load_transformer(
     transformer: Optional[SentenceTransformer],
@@ -75,11 +87,32 @@ def _get_optional_display_iter(
     return iterable
 
 
-def get_encodings_for_transcript(
+# get encodings from transcript
+# stack encodings for all delims
+# stack encodings for just start delims
+# stack encodings for just end delims
+
+def get_single_delim_encodings_for_transcript(
     transcript: Union[str, Transcript],
     transformer: Optional[SentenceTransformer] = None,
     display_progress: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    pass
+
+
+def get_two_delim_encodings_for_transcript(
+    transcript: Union[str, Transcript],
+    transformer: Optional[SentenceTransformer] = None,
+    display_progress: bool = True,
+) -> Tuple[np.ndarray, np.ndarray]:
+    pass
+
+
+def get_trainable_datas_from_transcript(
+    transcript: Union[str, Transcript],
+    transformer: Optional[SentenceTransformer] = None,
+    display_progress: bool = True,
+) -> ProcessedEncodings:
     """
     Get all semantic encodings and labels for a single transcript.
 
@@ -97,10 +130,8 @@ def get_encodings_for_transcript(
 
     Returns
     -------
-    encodings: np.ndarray
-        All semantic encodings stacked into a single array.
-    labels: np.ndarray
-        The classification label for each sentence.
+    processed_results: ProcessedEncodings
+        All encodings and labels split into many variants for training and application.
     """
     # TODO:
     # Allow N window around section start to gather
@@ -120,7 +151,9 @@ def get_encodings_for_transcript(
 
     # Get existing sections
     sections = loaded_transcript.annotations.sections
-    delimiter_indices = [section.start_sentence_index for section in sections]
+    start_delimiter_indices = [section.start_sentence_index for section in sections]
+    stop_delimiter_indices = [section.stop_sentence_index for section in sections]
+    delimiter_indices = start_delimiter_indices + stop_delimiter_indices
 
     # Iter all sentences and get encodings and label for each
     iterator = _get_optional_display_iter(
@@ -128,23 +161,43 @@ def get_encodings_for_transcript(
         display_progress=display_progress,
         message="Sentences processed",
     )
-    encodings: List[np.ndarray] = []
-    labels: List[int] = []
+    all_encodings: List[np.ndarray] = []
+    unified_delimiter_labels: List[int] = []
+    split_delimiter_labels: List[int] = []
     for i, sentence in enumerate(iterator):
-        encodings.append(
+        all_encodings.append(
             loaded_transformer.encode(sentence.text, show_progress_bar=False)
         )
-        labels.append(int(i in delimiter_indices))
+        # Append label for unified
+        if i in delimiter_indices:
+            unified_delimiter_labels.append(1)
+        else:
+            unified_delimiter_labels.append(0)
+        
+        # Append label for split
+        if i in start_delimiter_indices:
+            split_delimiter_labels.append(1)
+        elif i in stop_delimiter_indices:
+            split_delimiter_labels.append(2)
+        else:
+            split_delimiter_labels.append(0)
 
-    return np.asarray(encodings), np.asarray(labels)
+    # Create all trainable datas and return
+    return ProcessedEncodings(
+        sentence_encodings=np.asarray(all_encodings),
+        unified_delimiters_sentence_labels=np.asarray(unified_delimiter_labels),
+        split_delimiters_sentence_labels=np.asarray(split_delimiter_labels),
+        unified_delimiters_average_encoding=np.asarray([enc for i, enc in enumerate(all_encodings) if i in delimiter_indices]).mean(axis=0),
+        start_delimiter_average_encoding=np.asarray([enc for i, enc in enumerate(all_encodings) if i in start_delimiter_indices]).mean(axis=0),
+        stop_delimiter_average_encoding=np.asarray([enc for i, enc in enumerate(all_encodings) if i in stop_delimiter_indices]).mean(axis=0)
+    )
 
-
-def get_encodings_for_corpus(
+def get_trainable_datas_for_corpus(
     transcripts: Iterable[Union[str, Transcript]],
     transformer: Optional[SentenceTransformer] = None,
     strict: bool = False,
     display_progress: bool = True,
-) -> "np.ndarray":
+) -> ProcessedEncodings:
     """
     Get all semantic encodings and labels for a whole corpus.
 
@@ -165,10 +218,8 @@ def get_encodings_for_corpus(
 
     Returns
     -------
-    encodings: np.ndarray
-        All semantic encodings stacked into a single array.
-    labels: np.ndarray
-        The classification label for each sentence in the whole corpus.
+    processed_corpus: ProcessedEncodings
+        All encodings and labels split into many variants for training and application.
     """
     # Load or use provided transformer
     loaded_transformer = _load_transformer(transformer)
@@ -179,19 +230,14 @@ def get_encodings_for_corpus(
         display_progress=display_progress,
         message="Transcripts processed",
     )
-    all_encodings: List[np.ndarray] = []
-    all_labels: List[np.ndarray] = []
+    processed_encodings: List[ProcessedEncodings] = []
     for transcript in iterator:
         try:
-            transcript_encodings, transcript_labels = get_encodings_for_transcript(
+            processed_encodings.append(get_trainable_datas_from_transcript(
                 transcript=transcript,
                 transformer=loaded_transformer,
                 display_progress=display_progress,
-            )
-
-            # Append encodings and labels
-            all_encodings.append(transcript_encodings)
-            all_labels.append(transcript_labels)
+            ))
 
         except Exception as e:
             if strict:
@@ -202,8 +248,14 @@ def get_encodings_for_corpus(
                     f"Error: {e}"
                 )
 
-    return np.concatenate(all_encodings), np.concatenate(all_labels)
-
+    return ProcessedEncodings(
+        sentence_encodings=np.concatenate([pe.sentence_encodings for pe in processed_encodings]),
+        unified_delimiters_sentence_labels=np.concatenate([pe.unified_delimiters_sentence_labels for pe in processed_encodings]),
+        split_delimiters_sentence_labels=np.concatenate([pe.split_delimiters_sentence_labels for pe in processed_encodings]),
+        unified_delimiters_average_encoding=np.stack([pe.unified_delimiters_average_encoding for pe in processed_encodings]).mean(axis=0),
+        start_delimiter_average_encoding=np.stack([pe.start_delimiter_average_encoding for pe in processed_encodings]).mean(axis=0),
+        stop_delimiter_average_encoding=np.stack([pe.stop_delimiter_average_encoding for pe in processed_encodings]).mean(axis=0),
+    )
 
 def train(
     encodings: np.ndarray, labels: np.ndarray, model_kwargs: Dict[str, Any] = {}
