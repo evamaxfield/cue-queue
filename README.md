@@ -1,3 +1,7 @@
+## ⚠️ ⚠️ This repo and library aren't ready for use, nor is it in active development! Don't leave open an issue, try some other library ⚠️ ⚠️
+
+---
+
 # cue-queue
 
 [![Build Status](https://github.com/JacksonMaxfield/cue-queue/workflows/Build%20Main/badge.svg)](https://github.com/JacksonMaxfield/cue-queue/actions)
