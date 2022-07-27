@@ -30,7 +30,6 @@ DEFAULT_TRANSFORMER = "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
 log = logging.getLogger(__name__)
 
 ###############################################################################
-# Types
 
 
 class ProcessedEncodings(NamedTuple):
@@ -41,7 +40,9 @@ class ProcessedEncodings(NamedTuple):
     start_delimiter_average_encoding: np.ndarray
     stop_delimiter_average_encoding: np.ndarray
 
+
 ###############################################################################
+
 
 def _load_transformer(
     transformer: Optional[SentenceTransformer],
@@ -91,6 +92,7 @@ def _get_optional_display_iter(
 # stack encodings for all delims
 # stack encodings for just start delims
 # stack encodings for just end delims
+
 
 def get_single_delim_encodings_for_transcript(
     transcript: Union[str, Transcript],
@@ -173,7 +175,7 @@ def get_trainable_datas_from_transcript(
             unified_delimiter_labels.append(1)
         else:
             unified_delimiter_labels.append(0)
-        
+
         # Append label for split
         if i in start_delimiter_indices:
             split_delimiter_labels.append(1)
@@ -187,10 +189,17 @@ def get_trainable_datas_from_transcript(
         sentence_encodings=np.asarray(all_encodings),
         unified_delimiters_sentence_labels=np.asarray(unified_delimiter_labels),
         split_delimiters_sentence_labels=np.asarray(split_delimiter_labels),
-        unified_delimiters_average_encoding=np.asarray([enc for i, enc in enumerate(all_encodings) if i in delimiter_indices]).mean(axis=0),
-        start_delimiter_average_encoding=np.asarray([enc for i, enc in enumerate(all_encodings) if i in start_delimiter_indices]).mean(axis=0),
-        stop_delimiter_average_encoding=np.asarray([enc for i, enc in enumerate(all_encodings) if i in stop_delimiter_indices]).mean(axis=0)
+        unified_delimiters_average_encoding=np.asarray(
+            [enc for i, enc in enumerate(all_encodings) if i in delimiter_indices]
+        ).mean(axis=0),
+        start_delimiter_average_encoding=np.asarray(
+            [enc for i, enc in enumerate(all_encodings) if i in start_delimiter_indices]
+        ).mean(axis=0),
+        stop_delimiter_average_encoding=np.asarray(
+            [enc for i, enc in enumerate(all_encodings) if i in stop_delimiter_indices]
+        ).mean(axis=0),
     )
+
 
 def get_trainable_datas_for_corpus(
     transcripts: Iterable[Union[str, Transcript]],
@@ -233,11 +242,13 @@ def get_trainable_datas_for_corpus(
     processed_encodings: List[ProcessedEncodings] = []
     for transcript in iterator:
         try:
-            processed_encodings.append(get_trainable_datas_from_transcript(
-                transcript=transcript,
-                transformer=loaded_transformer,
-                display_progress=display_progress,
-            ))
+            processed_encodings.append(
+                get_trainable_datas_from_transcript(
+                    transcript=transcript,
+                    transformer=loaded_transformer,
+                    display_progress=display_progress,
+                )
+            )
 
         except Exception as e:
             if strict:
@@ -249,13 +260,26 @@ def get_trainable_datas_for_corpus(
                 )
 
     return ProcessedEncodings(
-        sentence_encodings=np.concatenate([pe.sentence_encodings for pe in processed_encodings]),
-        unified_delimiters_sentence_labels=np.concatenate([pe.unified_delimiters_sentence_labels for pe in processed_encodings]),
-        split_delimiters_sentence_labels=np.concatenate([pe.split_delimiters_sentence_labels for pe in processed_encodings]),
-        unified_delimiters_average_encoding=np.stack([pe.unified_delimiters_average_encoding for pe in processed_encodings]).mean(axis=0),
-        start_delimiter_average_encoding=np.stack([pe.start_delimiter_average_encoding for pe in processed_encodings]).mean(axis=0),
-        stop_delimiter_average_encoding=np.stack([pe.stop_delimiter_average_encoding for pe in processed_encodings]).mean(axis=0),
+        sentence_encodings=np.concatenate(
+            [pe.sentence_encodings for pe in processed_encodings]
+        ),
+        unified_delimiters_sentence_labels=np.concatenate(
+            [pe.unified_delimiters_sentence_labels for pe in processed_encodings]
+        ),
+        split_delimiters_sentence_labels=np.concatenate(
+            [pe.split_delimiters_sentence_labels for pe in processed_encodings]
+        ),
+        unified_delimiters_average_encoding=np.stack(
+            [pe.unified_delimiters_average_encoding for pe in processed_encodings]
+        ).mean(axis=0),
+        start_delimiter_average_encoding=np.stack(
+            [pe.start_delimiter_average_encoding for pe in processed_encodings]
+        ).mean(axis=0),
+        stop_delimiter_average_encoding=np.stack(
+            [pe.stop_delimiter_average_encoding for pe in processed_encodings]
+        ).mean(axis=0),
     )
+
 
 def train(
     encodings: np.ndarray, labels: np.ndarray, model_kwargs: Dict[str, Any] = {}

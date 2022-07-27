@@ -13,6 +13,10 @@ setup_requirements = [
     "wheel>=0.34.2",
 ]
 
+cdp_converter = [
+    "cdp-backend>=3.0.0.dev27",
+]
+
 test_requirements = [
     "autoflake>=1.4",
     "black>=21.9b0",
@@ -28,6 +32,7 @@ test_requirements = [
     "tox>=3.15.2",
     "types-pytz>=2021.1.2",
     "types-requests~=0.1.11",
+    *cdp_converter,
 ]
 
 dev_requirements = [
@@ -48,8 +53,6 @@ dev_requirements = [
 ]
 
 requirements = [
-    "cdp-backend>=3.0.0.dev18",
-    "fsspec",  # no pin, get from cdp-backend
     "numpy>=1.21",
     "scikit-learn>=0.24.2",
     "segeval>=2.0.11",

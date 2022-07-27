@@ -122,6 +122,7 @@ plots/
 summaries/
 unannotated/
 cue-queue.pkl
+corpus--*
 
 # Common credentials directories
 .keys/
